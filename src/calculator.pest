@@ -1,6 +1,6 @@
 // No whitespace allowed between digits
 integer = @{ ASCII_DIGIT+ }
-unary_minus = { "-" ~ expr }
+unary_minus = { "-" ~ atom }
 
 atom = _{ integer | unary_minus | "(" ~ expr ~ ")" }
 

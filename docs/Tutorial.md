@@ -1,8 +1,35 @@
 # Precedence climbing with pest - calculator example
+This tutorial focuses on the practical aspect of using precedence climbing to parse expressions using pest.
+To illustrate this we build a parser for simple equations, and construct an abstract syntax tree.
+
+## Precedence and associativity
+In a simple equation multiplication and division are evaluated first, which means they have a higher precedence.
+e.g. `1 + 2 * 3` is evaluated as `1 + (2 * 3)`, if the precedence was equal it would be `(1 + 2) * 3`.
+For our system we have the following operands:
+- highest precedence: multiplication & division
+- lowest precedence: addition & subtraction
+
+In the expression `1 + 2 - 3`, no operator is inherently more important than the other.
+Addition, subtraction, multiplication and division are evaluated from left to right.
+e.g. `1 - 2 + 3` is evaluated as `(1 - 2) + 3`. We call this property left associativity. 
+Operators can also be right associative. For example, we usually evaluate the statement `x = y = 1` by first 
+assigning `y = 1` and `x = 1` (or `x = y`) afterwards.
+
+Associativity only matters if two operators have the same precedence, as is the case with addition and subtraction for 
+example. This means that if we have an expression with only additions and subtractions, we can just evaluate it from 
+left to right. `1 + 2 - 3` is equal to `(1 + 2) - 3`. And `1 - 2 + 3` is equal to `(1 - 2) + 3`.
+
+To go from a flat list of operands separated by operators, it suffices to define a precedence and associativity for each 
+operator. With these definitions an algorithm such as precedence climbing is able to construct a corresponding 
+expression tree.
+
+If you are curious to know more about how precedence climbing is implemented, Eli Bendersky has a
+[great tutorial](https://eli.thegreenplace.net/2012/08/02/parsing-expressions-by-precedence-climbing) on implementing it
+from scratch using python.
 
 ## Calculator example
 We want our calculator to be able to parse simple equations that consist of integers and simple binary operators.
-We want to support parenthesis and unary minus.
+Additionally, we want to support parenthesis and unary minus.
 For example:
 ```
 1 + 2 * 3
@@ -158,3 +185,35 @@ Parsed: BinOp {
     },
 }
 ```
+
+## Unary minus and parenthesis
+So far our calculator can parse fairly complicated expressions, but it will fail if it encounters explicit parentheses 
+or a unary minus sign. Let's fix that.
+
+### Parentheses
+Consider the expression `(1 + 2) * 3`. Clearly removing the parentheses would give a different result, so we must 
+support parsing such expressions. Luckily, this can be a simple addition to our `atom` rule:
+
+```diff
+- atom = _{ integer }
++ atom = _{ integer | "(" ~ expr ~ ")" }
+```
+
+Earlier we said that atoms should be simple token sequences that cannot be split up further, but now an atom can contain
+arbitrary expressions! The reason we are okay with this is that the parentheses mark clear boundaries for the 
+expression, it will not make ambiguous what operators belong to the inner expression and which to the outer one.
+
+### Unary minus
+We can currently only parse positive integers, eg `16` or `2342`. But we also want to do calculations with negative intergers.
+To do this we introduce the unary minus, so we can make `-4` and `-(8 + 15)`.
+We need the following change to grammar:
+```pest
++ unary_minus = { "-" ~ atom }
+- atom = _{ integer | "(" ~ expr ~ ")" }
++ atom = _{ integer | unary_minus | "(" ~ expr ~ ")" }
+```
+
+For these last changes we've omitted the small changes to the AST and parsing logic. You can find all these details in 
+the repository: https://github.com/wildarch/pest-calculator.
+
+For questions or suggestions, please feel free to open an issues or submit a PR!
